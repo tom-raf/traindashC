@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: traindash-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: DATA_SOURCE
+        value: ldbws
+      - key: REPOSITORY
+        value: supabase
+      - key: LDBWS_BASE_URL
+        sync: false
+      - key: LDBWS_API_KEY
+        sync: false
+      - key: LDBWS_AUTH_HEADER
+        value: x-apikey
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: INGEST_SECRET
+        sync: false

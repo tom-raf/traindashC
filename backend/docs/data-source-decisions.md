@@ -42,10 +42,11 @@ Decision log for replacing `MockTrainDataProvider`/`InMemoryReliabilityRepositor
 
 **Wiring — resolved via two independent env toggles**, not a single combined switch: `DATA_SOURCE` (`mock` | `ldbws`) and `REPOSITORY` (`memory` | `supabase`) in `backend/src/config/env.ts`, both defaulting to the no-external-calls option. Kept independent (rather than one "live mode" flag) so each piece can be verified against a real backend while the other is still on its safe default.
 
+**`SupabaseReliabilityRepository` — now verified against a real project.** Schema applied, `saveMany`/`findByStationAndRange` confirmed round-tripping correctly, both directly and through a full server run with `REPOSITORY=supabase`. One real issue hit along the way: the table created via the SQL Editor left `service_role` with only `TRUNCATE`/`TRIGGER`/`REFERENCES` (Supabase's schema-level default privileges), missing the `SELECT`/`INSERT`/`UPDATE`/`DELETE` needed for actual reads/writes — surfaced as a plain `permission denied for table` error, not an RLS-flavored one, and fixed with an explicit `grant select, insert, update, delete on public.service_records to service_role;`. Worth checking `information_schema.table_privileges` on any future table created the same way.
+
 ## Open questions (not yet resolved)
 
 - **LDBWS rate limits:** not yet confirmed what call frequency the Rail Data Marketplace subscription actually permits.
 - **LDBWS `std`/`etd` time format:** not confirmed as `"HH:mm"` vs `"HHMM"` from the docs — `LdbwsTrainDataProvider` tolerates both, but hasn't been checked against an actual live response yet.
 - **Live API not yet tested end-to-end** — `LdbwsTrainDataProvider` is unit-tested against a stubbed board fetcher, not yet exercised against the real endpoint with real credentials.
-- **`SupabaseReliabilityRepository` not yet tested against a real project** — unit-tested against a stubbed `SupabaseClient` only; the schema migration hasn't been applied anywhere yet.
-- **`net.http_post`'s exact `pg_net` syntax/behavior on the specific Supabase Postgres version in use is unverified** — `0002_ingestion_cron.sql` is written against the documented pattern but hasn't been run.
+- **`net.http_post`'s exact `pg_net` syntax/behavior on the specific Supabase Postgres version in use is unverified** — `0002_ingestion_cron.sql` is written against the documented pattern but hasn't been run (needs a deployed backend URL first).

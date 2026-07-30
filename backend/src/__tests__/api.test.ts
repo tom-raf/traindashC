@@ -1,10 +1,19 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../app.js';
-import { provider, repository } from '../container.js';
 import { seed } from '../bootstrap/seed.js';
+import { MockTrainDataProvider } from '../providers/mock-train-data-provider.js';
+import { InMemoryReliabilityRepository } from '../repository/in-memory-reliability-repository.js';
+import { ReliabilityService } from '../services/reliability-service.js';
 
-const app = createApp();
+// Explicit mock/in-memory deps, not the ambient container.js composition
+// root: that's wired from DATA_SOURCE/REPOSITORY env vars, so importing it
+// here would make this suite silently hit real LDBWS/Supabase whenever a
+// developer happens to have those set in .env for other work.
+const provider = new MockTrainDataProvider();
+const repository = new InMemoryReliabilityRepository();
+const reliabilityService = new ReliabilityService(repository, provider);
+const app = createApp({ provider, repository, reliabilityService });
 
 beforeAll(async () => {
   await seed(provider, repository);

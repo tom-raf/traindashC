@@ -81,13 +81,22 @@ export class LdbwsTrainDataProvider implements TrainDataProvider {
     const board = await this.fetchBoard(this.config, query.station);
     const today = new Date().toISOString().slice(0, 10);
 
-    const records: ServiceRecord[] = [];
+    // Keyed by id, not pushed to an array: a single board snapshot can
+    // contain two distinct services from the same operator at the same
+    // displayed minute (rare, but real — hit in production). Since two
+    // records sharing a composite id would make a single Supabase upsert
+    // batch fail outright ("ON CONFLICT DO UPDATE command cannot affect row
+    // a second time" — a Postgres restriction on the batch itself, not
+    // about existing rows), the later one wins here, consistent with this
+    // id scheme's existing "later poll refines the record" design intent.
+    const records = new Map<string, ServiceRecord>();
     for (const item of board.trainServices ?? []) {
       if (!item.std) continue; // no scheduled departure at this station — skip
       const { status, delayMinutes } = deriveStatus(item);
       const scheduledTime = toOurTimeFormat(item.std);
-      records.push({
-        id: `${query.station}-${item.operatorCode}-${scheduledTime}-${today}`,
+      const id = `${query.station}-${item.operatorCode}-${scheduledTime}-${today}`;
+      records.set(id, {
+        id,
         stationCode: query.station,
         operatorCode: item.operatorCode,
         serviceDate: today,
@@ -96,6 +105,6 @@ export class LdbwsTrainDataProvider implements TrainDataProvider {
         delayMinutes,
       });
     }
-    return records;
+    return [...records.values()];
   }
 }

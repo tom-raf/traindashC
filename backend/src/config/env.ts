@@ -2,8 +2,14 @@ import { config as loadDotenv } from 'dotenv';
 
 loadDotenv();
 
+// Trimmed defensively: dotenv trims whitespace around `=` in a local .env
+// file, but a value pasted into a hosting provider's dashboard field (e.g.
+// Render, Vercel) has no such guarantee — a stray leading/trailing space or
+// newline from a copy-paste becomes part of the literal value, which for a
+// URL or API key can produce a working-looking config that still fails
+// every request.
 function requireEnv(name: string): string {
-  const value = process.env[name];
+  const value = process.env[name]?.trim();
   if (!value) {
     throw new Error(`Missing required environment variable: ${name}`);
   }
@@ -25,7 +31,7 @@ export const ldbwsConfig = {
     return requireEnv('LDBWS_API_KEY');
   },
   get authHeader(): string {
-    return process.env.LDBWS_AUTH_HEADER ?? 'x-apikey';
+    return process.env.LDBWS_AUTH_HEADER?.trim() || 'x-apikey';
   },
 };
 
@@ -51,5 +57,5 @@ export const ingestConfig = {
 // Two independent toggles (not one combined switch) so LDBWS and Supabase
 // can each be tried against the mock/in-memory side while the other is
 // still being verified. Both default to the safe, no-external-calls option.
-export const dataSourceMode: 'mock' | 'ldbws' = process.env.DATA_SOURCE === 'ldbws' ? 'ldbws' : 'mock';
-export const repositoryMode: 'memory' | 'supabase' = process.env.REPOSITORY === 'supabase' ? 'supabase' : 'memory';
+export const dataSourceMode: 'mock' | 'ldbws' = process.env.DATA_SOURCE?.trim() === 'ldbws' ? 'ldbws' : 'mock';
+export const repositoryMode: 'memory' | 'supabase' = process.env.REPOSITORY?.trim() === 'supabase' ? 'supabase' : 'memory';

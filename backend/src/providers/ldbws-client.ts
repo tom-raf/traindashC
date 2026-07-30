@@ -61,7 +61,19 @@ export async function getDepartureBoard(config: LdbwsClientConfig, crs: string, 
   });
 
   if (!response.ok) {
-    throw new Error(`LDBWS GetArrDepBoardWithDetails(${crs}) failed: ${response.status} ${response.statusText}`);
+    // Includes the URL (safe — the API key is a header, never part of the
+    // URL) and a snippet of the response body, not just the status code:
+    // a bare "500 Internal Server Error" gave no way to tell a malformed
+    // URL/header apart from a genuine upstream outage when this first hit
+    // production. Never worked from one environment and not another
+    // without this extra detail.
+    const bodySnippet = await response.text().then(
+      (text) => text.slice(0, 500),
+      () => '<unreadable body>',
+    );
+    throw new Error(
+      `LDBWS GetArrDepBoardWithDetails(${crs}) failed: ${response.status} ${response.statusText} — url: ${url.toString()} — body: ${bodySnippet}`,
+    );
   }
 
   return (await response.json()) as LdbwsStationBoard;

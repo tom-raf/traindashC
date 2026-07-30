@@ -80,4 +80,17 @@ describe('LdbwsTrainDataProvider', () => {
 
     expect(records[0].id).toBe(`CBG-GN-07:00-${new Date().toISOString().slice(0, 10)}`);
   });
+
+  it('dedupes two distinct services that share operator + scheduled time, so a batch never has a duplicate id', async () => {
+    const fetchBoard = async () =>
+      fakeBoard([
+        serviceItem({ operatorCode: 'GN', std: '0700', serviceID: 'service-A' }),
+        serviceItem({ operatorCode: 'GN', std: '0700', serviceID: 'service-B' }),
+      ]);
+    const provider = new LdbwsTrainDataProvider(config, fetchBoard);
+
+    const records = await provider.getServiceRecords({ station: 'CBG', from: '2026-07-01', to: '2026-07-30' });
+
+    expect(records).toHaveLength(1);
+  });
 });

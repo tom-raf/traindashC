@@ -7,7 +7,6 @@ import {
   type ServiceRecord,
   type StationCode,
 } from '@shared/types.js';
-import { ALL_OPERATORS } from '../config/stations.js';
 import type { ReliabilityRepository } from '../repository/reliability-repository.interface.js';
 import type { TrainDataProvider } from '../providers/train-data-provider.interface.js';
 
@@ -56,7 +55,16 @@ export class ReliabilityService {
 
   async getOperatorBreakdown(station: StationCode, from?: string, to?: string): Promise<OperatorBreakdownResponse> {
     const range = from && to ? { from, to } : defaultRange();
-    const records = await this.repository.findByStationAndRange(station, range.from, range.to);
+    const [records, knownOperators] = await Promise.all([
+      this.repository.findByStationAndRange(station, range.from, range.to),
+      this.provider.getOperatorsForStation(station),
+    ]);
+    // Name lookup comes from the provider, not a static table: a live
+    // station can see operator codes the mock data never used (e.g. LDBWS's
+    // "LE" for Greater Anglia, vs. the mock's "GA"), and a fixed table can't
+    // know about those in advance. Falls back to the code itself so a
+    // provider hiccup never breaks the response.
+    const operatorByCode = new Map(knownOperators.map((operator) => [operator.code, operator]));
 
     const byOperator = new Map<string, { onTime: number; delayed: number; cancelled: number }>();
     for (const record of records) {
@@ -68,7 +76,7 @@ export class ReliabilityService {
     const operators: OperatorBreakdownEntry[] = [...byOperator.entries()].map(([operatorCode, counts]) => {
       const totalServices = counts.onTime + counts.delayed + counts.cancelled;
       return {
-        operator: ALL_OPERATORS[operatorCode],
+        operator: operatorByCode.get(operatorCode) ?? { code: operatorCode, name: operatorCode },
         totalServices,
         onTime: counts.onTime,
         delayed: counts.delayed,

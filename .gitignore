@@ -1,6 +1,7 @@
 .env
 claude.md
 CLAUDE.md
+.DS_Store
 
 # Logs
 logs

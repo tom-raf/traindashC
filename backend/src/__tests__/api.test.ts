@@ -58,3 +58,24 @@ describe('GET /api/stations/:code/operator-breakdown', () => {
     }
   });
 });
+
+describe('a route whose dependency throws', () => {
+  it('responds 500 instead of crashing the process (regression: this took down the deployed server)', async () => {
+    const throwingProvider = new MockTrainDataProvider();
+    const throwingRepository = new InMemoryReliabilityRepository();
+    throwingRepository.findByStationAndRange = async () => {
+      throw new Error('simulated transient failure');
+    };
+    const throwingService = new ReliabilityService(throwingRepository, throwingProvider);
+    const throwingApp = createApp({ provider: throwingProvider, repository: throwingRepository, reliabilityService: throwingService });
+
+    const res = await request(throwingApp).get('/api/stations/CBG/reliability');
+
+    expect(res.status).toBe(500);
+    // If this handler weren't wrapped in asyncHandler, the rejection above
+    // would be unhandled and this test process itself would crash instead
+    // of reaching this assertion at all.
+    const healthRes = await request(throwingApp).get('/api/health');
+    expect(healthRes.status).toBe(200);
+  });
+});

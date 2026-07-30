@@ -1,5 +1,5 @@
 import cors from 'cors';
-import express, { type Express } from 'express';
+import express, { type Express, type NextFunction, type Request, type Response } from 'express';
 import * as defaultContainer from './container.js';
 import type { TrainDataProvider } from './providers/train-data-provider.interface.js';
 import type { ReliabilityRepository } from './repository/reliability-repository.interface.js';
@@ -39,6 +39,18 @@ export function createApp(deps: AppDeps = defaultContainer): Express {
 
   app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
+  });
+
+  // Last-resort safety net: catches anything a route forwarded via next(err)
+  // (asyncHandler does this automatically) so a failure becomes a 500
+  // response for that one request instead of an unhandled rejection that
+  // crashes the whole process — this is the exact bug that took down every
+  // deployed request to /operators and /reliability on first real traffic,
+  // fixed at the route level with asyncHandler, this is the backstop.
+  // Express recognizes an error handler by its 4-argument signature.
+  app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    console.error('Unhandled route error:', err);
+    res.status(500).json({ error: 'Internal server error' });
   });
 
   return app;

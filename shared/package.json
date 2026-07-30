@@ -1,0 +1,5 @@
+{
+  "name": "@traindash/shared",
+  "private": true,
+  "type": "module"
+}

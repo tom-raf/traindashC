@@ -32,9 +32,20 @@ Decision log for replacing `MockTrainDataProvider`/`InMemoryReliabilityRepositor
 
 **`serviceID` stability — resolved by design, not by verification:** rather than confirm whether it's stable across polls, `ServiceRecord.id` uses a composite key (`station-operator-std-date`) instead. This also means repeated polls of the same in-progress service naturally upsert onto the same record as the estimate refines, rather than accumulating duplicates.
 
+## 5. `SupabaseReliabilityRepository` and the ingestion endpoint
+
+**Decision:** `backend/src/repository/supabase-reliability-repository.ts` implements `ReliabilityRepository` over `@supabase/supabase-js`, taking a pre-built `SupabaseClient` (constructed in `container.ts` from `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`) rather than building its own client internally — same injectable-dependency shape as `LdbwsTrainDataProvider`'s `fetchBoard`, so it can be unit-tested against a stubbed client instead of a real project.
+
+**Retention/aggregation — resolved:** no rollup or deletion logic. At ~9,000 rows/month across 3 stations, a year of raw `service_records` is nowhere near the Supabase Free tier's 500MB cap, so `reliability-service.ts` keeps computing daily buckets and operator breakdowns on read from raw rows — unchanged, and source-agnostic (it already worked this way against `InMemoryReliabilityRepository`). This closes the open question from section 4; revisit only if row volume ever becomes a real concern.
+
+**Ingestion path — resolved as a backend endpoint, not a Supabase Edge Function:** `POST /api/ingest` (`backend/src/routes/ingest.routes.ts`) calls the same `pollAndStore()` used at server startup, guarded by an `x-ingest-secret` header. Chosen over an Edge Function because it reuses `LdbwsTrainDataProvider` directly instead of reimplementing the LDBWS call in Deno. Tradeoff: `pg_net`'s `net.http_post` (`backend/supabase/migrations/0002_ingestion_cron.sql`) needs a public URL for this backend, so the recurring cron can't actually run until the backend is deployed somewhere reachable — it's written and ready, but inert until then. The secret itself is meant to live in Supabase Vault (`vault.create_secret`), not hardcoded in the migration file, since that file is committed to git.
+
+**Wiring — resolved via two independent env toggles**, not a single combined switch: `DATA_SOURCE` (`mock` | `ldbws`) and `REPOSITORY` (`memory` | `supabase`) in `backend/src/config/env.ts`, both defaulting to the no-external-calls option. Kept independent (rather than one "live mode" flag) so each piece can be verified against a real backend while the other is still on its safe default.
+
 ## Open questions (not yet resolved)
 
-- **Raw-data retention / aggregation granularity:** still deciding between rolling raw records into daily buckets (matching the existing `DailyReliabilityBucket` shape already used by the frontend) versus a coarser weekly aggregate-then-delete. Data volume is small enough (~9,000 rows/month across 3 stations) that storage isn't a real constraint — leaning toward daily rollups with a short retention buffer on raw records rather than aggressive weekly deletion, but not finalized.
 - **LDBWS rate limits:** not yet confirmed what call frequency the Rail Data Marketplace subscription actually permits.
 - **LDBWS `std`/`etd` time format:** not confirmed as `"HH:mm"` vs `"HHMM"` from the docs — `LdbwsTrainDataProvider` tolerates both, but hasn't been checked against an actual live response yet.
 - **Live API not yet tested end-to-end** — `LdbwsTrainDataProvider` is unit-tested against a stubbed board fetcher, not yet exercised against the real endpoint with real credentials.
+- **`SupabaseReliabilityRepository` not yet tested against a real project** — unit-tested against a stubbed `SupabaseClient` only; the schema migration hasn't been applied anywhere yet.
+- **`net.http_post`'s exact `pg_net` syntax/behavior on the specific Supabase Postgres version in use is unverified** — `0002_ingestion_cron.sql` is written against the documented pattern but hasn't been run.

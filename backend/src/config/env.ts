@@ -24,3 +24,28 @@ export const ldbwsConfig = {
     return process.env.LDBWS_AUTH_HEADER ?? 'x-apikey';
   },
 };
+
+export const supabaseConfig = {
+  get url(): string {
+    return requireEnv('SUPABASE_URL');
+  },
+  // Server-side only — bypasses row-level security. Never expose this to the frontend.
+  get serviceRoleKey(): string {
+    return requireEnv('SUPABASE_SERVICE_ROLE_KEY');
+  },
+};
+
+// Shared secret checked on POST /api/ingest, so that endpoint can't be used
+// by an outsider to burn LDBWS rate-limit budget or spam the database once
+// this backend has a public URL. The pg_cron job sends this same value.
+export const ingestConfig = {
+  get secret(): string {
+    return requireEnv('INGEST_SECRET');
+  },
+};
+
+// Two independent toggles (not one combined switch) so LDBWS and Supabase
+// can each be tried against the mock/in-memory side while the other is
+// still being verified. Both default to the safe, no-external-calls option.
+export const dataSourceMode: 'mock' | 'ldbws' = process.env.DATA_SOURCE === 'ldbws' ? 'ldbws' : 'mock';
+export const repositoryMode: 'memory' | 'supabase' = process.env.REPOSITORY === 'supabase' ? 'supabase' : 'memory';

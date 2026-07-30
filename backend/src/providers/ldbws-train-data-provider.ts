@@ -24,7 +24,7 @@ function toOurTimeFormat(time: string): string {
   return `${hh}:${mm}`;
 }
 
-// GetDepartureBoard's ServiceItem has no `atd` (actual departure) — only
+// GetArrDepBoardWithDetails's ServiceItem has no `atd` (actual departure) — only
 // Darwin's live estimate (`etd`), which is sometimes a real HH:mm time and
 // sometimes a status string ("On time", "Delayed", "Cancelled", "No report").
 // The exact string vocabulary isn't confirmed against a live response yet

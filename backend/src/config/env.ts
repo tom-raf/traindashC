@@ -14,8 +14,12 @@ function requireEnv(name: string): string {
 // never actually touch LDBWS (e.g. MockTrainDataProvider, still the active
 // default in container.ts).
 export const ldbwsConfig = {
+  // No guessed default here on purpose — an earlier version defaulted to
+  // https://realtime.nationalrail.co.uk/LDBWS, which turned out to be wrong.
+  // The real URL is the Rail Data Marketplace gateway for this specific
+  // subscribed product (see backend/.env.example), not the origin service.
   get baseUrl(): string {
-    return process.env.LDBWS_BASE_URL ?? 'https://realtime.nationalrail.co.uk/LDBWS';
+    return requireEnv('LDBWS_BASE_URL');
   },
   get apiKey(): string {
     return requireEnv('LDBWS_API_KEY');

@@ -1,12 +1,25 @@
-// LDBWS client — base URL/paths/params confirmed against
-// backend/docs/ldbws-swagger-json.txt. Auth header name is NOT in that spec
-// (it's a Rail Data Marketplace gateway concern, not the underlying
-// service's own contract) — confirm LDBWS_AUTH_HEADER against the
-// marketplace subscription page; see backend/docs/data-source-decisions.md.
+// LDBWS client — confirmed against a real call to the subscribed Rail Data
+// Marketplace product, not just the OpenAPI spec (backend/docs/ldbws-swagger-json.txt).
 //
-// Note: GetDepartureBoard's ServiceItem has `std`/`etd` but no `atd` —
-// actual departure times only exist via the separate GetServiceDetails
-// call, which we don't make per-service here (see data-source-decisions.md).
+// Uses GetArrDepBoardWithDetails, not the plain GetDepartureBoard originally
+// planned: this subscription's gateway only routes the WithDetails variant
+// (GetDepartureBoard 500s on it). Tradeoff accepted as a result: the row cap
+// is ~10 regardless of `numRows` requested (not the ~149 the reference PDF
+// suggested for the plain endpoint — that number doesn't apply here). The
+// extra calling-point/origin/destination detail WithDetails adds over the
+// plain endpoint is simply ignored; LdbwsServiceItem only models the fields
+// this app actually reads. See backend/docs/data-source-decisions.md.
+//
+// Confirmed live: std/etd (and sta/eta) come back as "HH:mm", and etd/eta
+// are sometimes a status string like "On time" instead of a time.
+//
+// Auth header name is NOT in the OpenAPI spec (it's a Rail Data Marketplace
+// gateway concern, not the underlying service's own contract) — confirmed
+// live as x-apikey.
+//
+// Still no atd/ata on this response either — actual departure/arrival times
+// only exist via the separate GetServiceDetails call, which we don't make
+// per-service here (see data-source-decisions.md).
 
 export interface LdbwsServiceItem {
   rsid?: string;
@@ -30,14 +43,14 @@ export interface LdbwsStationBoard {
 }
 
 export interface LdbwsClientConfig {
-  baseUrl: string; // e.g. https://realtime.nationalrail.co.uk/LDBWS
+  baseUrl: string; // subscription-specific Rail Data Marketplace gateway URL — see backend/.env.example
   apiKey: string;
-  authHeader: string; // UNCONFIRMED default — see module comment above
+  authHeader: string; // confirmed: x-apikey
 }
 
 export async function getDepartureBoard(config: LdbwsClientConfig, crs: string, numRows = 149): Promise<LdbwsStationBoard> {
-  const url = new URL(`${config.baseUrl}/api/20220120/GetDepartureBoard/${crs}`);
-  url.searchParams.set('numRows', String(numRows));
+  const url = new URL(`${config.baseUrl}/api/20220120/GetArrDepBoardWithDetails/${crs}`);
+  url.searchParams.set('numRows', String(numRows)); // server caps at ~10 regardless — see module comment
   url.searchParams.set('timeWindow', '120');
 
   const response = await fetch(url, {
@@ -48,7 +61,7 @@ export async function getDepartureBoard(config: LdbwsClientConfig, crs: string, 
   });
 
   if (!response.ok) {
-    throw new Error(`LDBWS GetDepartureBoard(${crs}) failed: ${response.status} ${response.statusText}`);
+    throw new Error(`LDBWS GetArrDepBoardWithDetails(${crs}) failed: ${response.status} ${response.statusText}`);
   }
 
   return (await response.json()) as LdbwsStationBoard;

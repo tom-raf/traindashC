@@ -1,8 +1,8 @@
 # Train Dash
 
-A dashboard for tracking train reliability at a small set of UK stations — currently **Cambridge**, **York**, and **Newcastle**. For each station it shows:
+A dashboard for tracking train reliability at a small set of UK stations — currently **Cambridge**, **York**, **Newcastle**, and **Manchester Piccadilly**. For each station it shows:
 
-- **Station** — switch between the 3 tracked stations
+- **Station** — switch between the 4 tracked stations
 - **Train Operators** — a per-operator breakdown (services run, on time / delayed / cancelled counts, on-time %)
 - **Reliability graph** — a stacked bar chart of On Time / Delayed / Cancelled trains per day, over the last 30 days
 

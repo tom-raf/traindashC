@@ -20,10 +20,10 @@ beforeAll(async () => {
 });
 
 describe('GET /api/stations', () => {
-  it('returns the fixed 3 stations', async () => {
+  it('returns the fixed 4 stations', async () => {
     const res = await request(app).get('/api/stations');
     expect(res.status).toBe(200);
-    expect(res.body.map((s: { code: string }) => s.code)).toEqual(['CBG', 'YRK', 'NCL']);
+    expect(res.body.map((s: { code: string }) => s.code)).toEqual(['CBG', 'YRK', 'NCL', 'MAN']);
   });
 });
 

@@ -1,7 +1,7 @@
 // Single source of truth for data shapes shared between backend and frontend.
 // Referenced via tsconfig `paths` from both projects — keep this file dependency-free.
 
-export const STATIONS = ['CBG', 'YRK', 'NCL'] as const;
+export const STATIONS = ['CBG', 'YRK', 'NCL', 'MAN'] as const;
 export type StationCode = (typeof STATIONS)[number];
 
 export interface StationInfo {
@@ -13,6 +13,7 @@ export const STATION_INFO: Record<StationCode, StationInfo> = {
   CBG: { code: 'CBG', name: 'Cambridge' },
   YRK: { code: 'YRK', name: 'York' },
   NCL: { code: 'NCL', name: 'Newcastle' },
+  MAN: { code: 'MAN', name: 'Manchester Piccadilly' },
 };
 
 export type OperatorCode = string;

@@ -15,6 +15,7 @@ export const STATION_OPERATORS: Record<StationCode, OperatorCode[]> = {
   CBG: ['GN', 'GA', 'XC'],
   YRK: ['GR', 'TP', 'XC', 'NT'],
   NCL: ['GR', 'XC', 'NT', 'TP'],
+  MAN: ['TP', 'NT', 'XC'],
 };
 
 export interface OperatorProfile {
